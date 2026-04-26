@@ -69,9 +69,6 @@ pipeline {
         }
 
         stage('Deploy to EC2') {
-            when {
-                branch 'main'
-            }
             steps {
                 sshagent(credentials: ['EC2_SSH_KEY']) {
                     sh """
@@ -98,7 +95,7 @@ pipeline {
                                 docker compose down
                                 docker compose up -d
                                 docker image prune -f
-                            echo "Deployed build #${IMAGE_TAG} at \$(date)"
+                                echo "Deployed at \$(date)"
                             '
                     """
                 }
