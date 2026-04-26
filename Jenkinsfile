@@ -98,7 +98,7 @@ pipeline {
                                 docker compose down
                                 docker compose up -d
                                 docker image prune -f
-                                echo "Deployed build #${IMAGE_TAG} at $(date)"
+                            echo "Deployed build #${IMAGE_TAG} at \$(date)"
                             '
                     """
                 }
