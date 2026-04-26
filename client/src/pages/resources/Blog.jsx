@@ -103,7 +103,7 @@ export default function Blog() {
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filtered.map((post, idx) => (
+            {filtered.map((post) => (
               <article
                 key={post.id}
                 onClick={() => navigate(`/resources/blog/${post.slug}`)}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import SEO from '../components/SEO';
-import { validateForm, formatPhone, rules } from '../utils/validate';
+import { validateForm, formatPhone } from '../utils/validate';
 import { API } from '../lib/api.js';
 
 const Field = ({ label, error, touched, children, hint }) => (

@@ -10,8 +10,8 @@ RUN npm ci --omit=dev
 # Copy source
 COPY . .
 
-# Generate Prisma client
-RUN npx prisma generate
+# Generate Prisma client — pin to v5 to match installed version
+RUN npx prisma@5 generate
 
 EXPOSE 3000
 

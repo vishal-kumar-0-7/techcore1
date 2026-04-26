@@ -23,7 +23,7 @@ pipeline {
 
         stage('Lint & Validate') {
             parallel {
-                stage('Client Lint') {
+        stage('Client Lint') {
                     steps {
                         dir('client') {
                             sh 'npm install'

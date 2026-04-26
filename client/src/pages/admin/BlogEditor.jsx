@@ -7,6 +7,8 @@ import { API } from '../../lib/api.js';
 const apiFetch = (url, options = {}) =>
   fetch(url, { ...options, credentials: 'include', headers: { 'Content-Type': 'application/json', ...options.headers } });
 
+const categories = ['Engineering', 'Design', 'Business', 'AI', 'DevOps', 'Product'];
+
 // Preview modal — renders the post exactly as the public blog would
 function PreviewModal({ form, onClose }) {
   const tags = form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
