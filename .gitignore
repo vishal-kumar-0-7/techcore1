@@ -1,0 +1,5 @@
+.env
+.env.production
+*.pem
+*.key
+node_modules

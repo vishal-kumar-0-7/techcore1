@@ -1,0 +1,48 @@
+version: '3.9'
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: techcore-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      RECEIVER_EMAIL: ${RECEIVER_EMAIL}
+      JWT_SECRET: ${JWT_SECRET}
+      ALLOWED_ORIGIN: ${ALLOWED_ORIGIN}
+    expose:
+      - "3000"
+    networks:
+      - techcore-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+    container_name: techcore-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Mount SSL certificates from host into Nginx container
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - server
+    networks:
+      - techcore-network
+
+networks:
+  techcore-network:
+    driver: bridge
