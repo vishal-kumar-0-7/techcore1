@@ -26,15 +26,15 @@ pipeline {
                 stage('Client Lint') {
                     steps {
                         dir('client') {
-                            sh 'npm ci'
-                            sh 'npm run lint || true'   // warn, don't fail
+                            sh 'npm install'
+                            sh 'npm run lint || true'
                         }
                     }
                 }
                 stage('Server Validate') {
                     steps {
                         dir('server') {
-                            sh 'npm ci'
+                            sh 'npm install'
                             sh 'node --check server.js'
                         }
                     }
