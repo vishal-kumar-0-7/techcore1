@@ -2,36 +2,33 @@ pipeline {
     agent any
 
     environment {
-        // Docker image names
-        CLIENT_IMAGE = "techcore-client"
-        SERVER_IMAGE = "techcore-server"
-        IMAGE_TAG    = "${env.BUILD_NUMBER}"
-
-        // Loaded from Jenkins credentials
-        EC2_HOST     = credentials('EC2_HOST')
-        EC2_USER     = 'ubuntu'
+        DOCKERHUB_USERNAME = credentials('DOCKERHUB_USERNAME')
+        CLIENT_IMAGE       = "${DOCKERHUB_USERNAME}/techcore-client"
+        SERVER_IMAGE       = "${DOCKERHUB_USERNAME}/techcore-server"
+        IMAGE_TAG          = "${env.BUILD_NUMBER}"
+        EC2_HOST           = credentials('EC2_HOST')
+        EC2_USER           = 'ubuntu'
     }
 
     stages {
 
         stage('Checkout') {
             steps {
-                echo "Checking out code from branch: ${env.BRANCH_NAME}"
                 checkout scm
             }
         }
 
-        stage('Lint & Validate') {
+        stage('Lint') {
             parallel {
-        stage('Client Lint') {
+                stage('Client') {
                     steps {
                         dir('client') {
-                            sh 'npm install'
+                            sh 'npm install --legacy-peer-deps'
                             sh 'npm run lint || true'
                         }
                     }
                 }
-                stage('Server Validate') {
+                stage('Server') {
                     steps {
                         dir('server') {
                             sh 'npm install'
@@ -42,28 +39,37 @@ pipeline {
             }
         }
 
-        stage('Build Docker Images') {
-            parallel {
-                stage('Build Client') {
-                    steps {
-                        sh """
-                            docker build \
-                                --build-arg VITE_API_URL=/api \
-                                -t ${CLIENT_IMAGE}:${IMAGE_TAG} \
-                                -t ${CLIENT_IMAGE}:latest \
-                                ./client
-                        """
-                    }
-                }
-                stage('Build Server') {
-                    steps {
-                        sh """
-                            docker build \
-                                -t ${SERVER_IMAGE}:${IMAGE_TAG} \
-                                -t ${SERVER_IMAGE}:latest \
-                                ./server
-                        """
-                    }
+        stage('Build & Push to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'DOCKERHUB_CREDENTIALS',
+                    usernameVariable: 'DH_USER',
+                    passwordVariable: 'DH_PASS'
+                )]) {
+                    sh "echo $DH_PASS | docker login -u $DH_USER --password-stdin"
+
+                    // Build and push client
+                    sh """
+                        docker build \
+                            --build-arg VITE_API_URL=/api \
+                            -t ${CLIENT_IMAGE}:${IMAGE_TAG} \
+                            -t ${CLIENT_IMAGE}:latest \
+                            ./client
+                        docker push ${CLIENT_IMAGE}:${IMAGE_TAG}
+                        docker push ${CLIENT_IMAGE}:latest
+                    """
+
+                    // Build and push server
+                    sh """
+                        docker build \
+                            -t ${SERVER_IMAGE}:${IMAGE_TAG} \
+                            -t ${SERVER_IMAGE}:latest \
+                            ./server
+                        docker push ${SERVER_IMAGE}:${IMAGE_TAG}
+                        docker push ${SERVER_IMAGE}:latest
+                    """
+
+                    sh "docker logout"
                 }
             }
         }
@@ -72,31 +78,28 @@ pipeline {
             steps {
                 sshagent(credentials: ['EC2_SSH_KEY']) {
                     sh """
-                        # Copy docker-compose and .env to EC2
-                        scp -o StrictHostKeyChecking=no \
-                            docker-compose.yml \
-                            ${EC2_USER}@${EC2_HOST}:~/techcore/docker-compose.yml
+                        ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} '
+                            cd ~/techcore1
 
-                        # Save Docker images as tarballs and transfer
-                        docker save ${CLIENT_IMAGE}:latest | gzip | \
-                            ssh -o StrictHostKeyChecking=no \
-                            ${EC2_USER}@${EC2_HOST} \
-                            'gunzip | docker load'
+                            # Pull latest docker-compose
+                            git pull origin main
 
-                        docker save ${SERVER_IMAGE}:latest | gzip | \
-                            ssh -o StrictHostKeyChecking=no \
-                            ${EC2_USER}@${EC2_HOST} \
-                            'gunzip | docker load'
+                            # Login to DockerHub on EC2
+                            echo "${DH_PASS}" | docker login -u "${DH_USER}" --password-stdin 2>/dev/null || true
 
-                        # Restart containers on EC2
-                        ssh -o StrictHostKeyChecking=no \
-                            ${EC2_USER}@${EC2_HOST} '
-                                cd ~/techcore
-                                docker compose down
-                                docker compose up -d
-                                docker image prune -f
-                                echo "Deployed at \$(date)"
-                            '
+                            # Pull latest images
+                            docker pull ${CLIENT_IMAGE}:latest
+                            docker pull ${SERVER_IMAGE}:latest
+
+                            # Restart containers
+                            docker compose down
+                            DOCKERHUB_USERNAME=${DOCKERHUB_USERNAME} docker compose up -d
+
+                            # Cleanup
+                            docker image prune -f
+                            docker logout
+                            echo "Deployed build #${IMAGE_TAG} at \$(date)"
+                        '
                     """
                 }
             }
@@ -104,16 +107,15 @@ pipeline {
     }
 
     post {
+        always {
+            sh "docker rmi ${CLIENT_IMAGE}:${IMAGE_TAG} || true"
+            sh "docker rmi ${SERVER_IMAGE}:${IMAGE_TAG} || true"
+        }
         success {
             echo "Build #${IMAGE_TAG} deployed successfully."
         }
         failure {
-            echo "Build #${IMAGE_TAG} failed. Check the logs above."
-        }
-        always {
-            // Clean up local Docker images to save disk space on Jenkins
-            sh "docker rmi ${CLIENT_IMAGE}:${IMAGE_TAG} || true"
-            sh "docker rmi ${SERVER_IMAGE}:${IMAGE_TAG} || true"
+            echo "Build #${IMAGE_TAG} failed."
         }
     }
 }
