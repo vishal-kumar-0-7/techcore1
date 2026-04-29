@@ -243,15 +243,12 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     apiFetch(`${API}/admin/me`).then(r => r.ok ? r.json() : null).then(u => { if (u) setUser(u); });
-    fetchAll(); // eslint-disable-line react-hooks/exhaustive-deps
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    fetchAll();
+  }, []);
 
   // Re-fetch paginated tabs when page changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchPaginated('contact', 'contacts', pages.contacts); }, [pages.contacts]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchPaginated('leads', 'leads', pages.leads); }, [pages.leads]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchPaginated('appointments', 'appointments', pages.appointments); }, [pages.appointments]);
 
   const fetchPaginated = async (endpoint, key, page) => {
