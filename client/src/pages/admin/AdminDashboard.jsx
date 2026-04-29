@@ -241,16 +241,7 @@ export default function AdminDashboard() {
   const [totals, setTotals] = useState({ contacts: {}, leads: {}, appointments: {} });
   const LIMIT = 20;
 
-  useEffect(() => {
-    apiFetch(`${API}/admin/me`).then(r => r.ok ? r.json() : null).then(u => { if (u) setUser(u); });
-    fetchAll();
-  }, []);
-
-  // Re-fetch paginated tabs when page changes
-  useEffect(() => { fetchPaginated('contact', 'contacts', pages.contacts); }, [pages.contacts]);
-  useEffect(() => { fetchPaginated('leads', 'leads', pages.leads); }, [pages.leads]);
-  useEffect(() => { fetchPaginated('appointments', 'appointments', pages.appointments); }, [pages.appointments]);
-
+  // Declare functions BEFORE useEffect so they're available when effects run
   const fetchPaginated = async (endpoint, key, page) => {
     const res = await apiFetch(`${API}/${endpoint}?page=${page}&limit=${LIMIT}`);
     const json = await res.json();
@@ -283,9 +274,18 @@ export default function AdminDashboard() {
     setCaseStudies(Array.isArray(cs) ? cs : []);
   };
 
+  useEffect(() => {
+    apiFetch(`${API}/admin/me`).then(r => r.ok ? r.json() : null).then(u => { if (u) setUser(u); });
+    fetchAll();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-fetch paginated tabs when page changes
+  useEffect(() => { fetchPaginated('contact', 'contacts', pages.contacts); }, [pages.contacts]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchPaginated('leads', 'leads', pages.leads); }, [pages.leads]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchPaginated('appointments', 'appointments', pages.appointments); }, [pages.appointments]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const updateStatus = async (endpoint, id, status) => {
     await apiFetch(`${API}/${endpoint}/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
-    // Re-fetch only the relevant paginated tab
     if (endpoint === 'contact') fetchPaginated('contact', 'contacts', pages.contacts);
     else if (endpoint === 'leads') fetchPaginated('leads', 'leads', pages.leads);
     else if (endpoint === 'appointments') fetchPaginated('appointments', 'appointments', pages.appointments);
