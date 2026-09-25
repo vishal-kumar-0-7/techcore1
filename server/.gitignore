@@ -1,5 +1,5 @@
 node_modules
 # Keep environment variables out of version control
 .env
-
+/Users/vishalkumar/Desktop/TechCore/server/.env.mongo.bak
 /generated/prisma
