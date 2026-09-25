@@ -10,11 +10,11 @@ generator client {
 }
 
 datasource db {
-  provider = "mongodb"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 model Contact {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(cuid())
   name        String
   email       String
   description String   
@@ -23,7 +23,7 @@ model Contact {
 }
 
 model Lead {
-  id              String @id @default(auto()) @map("_id") @db.ObjectId 
+  id              String @id @default(cuid())
   name            String
   email           String
   phone           String?
@@ -39,23 +39,23 @@ model Lead {
 }
 
 model Appointment {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  id            String   @id @default(cuid())
 
-  leadId        String?  @db.ObjectId
-  lead          Lead?    @relation(fields: [leadId], references: [id])
+  leadId        String?
+  lead          Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
 
   name          String
   email         String
   phone         String?
   preferredDate DateTime
   preferredTime String   // "10:00 AM", "2:30 PM"
-  message       String?  // ❌ removed @db.Text
+  message       String?
   status        String   @default("pending")
   createdAt     DateTime @default(now())
 }
 
 model Admin {
-  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  id            String      @id @default(cuid())
   name          String
   email         String      @unique
   passwordHash  String
@@ -66,13 +66,13 @@ model Admin {
 }
 
 model BlogPost {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  id          String    @id @default(cuid())
   title       String
   slug        String    @unique
   content     String
   excerpt     String
   coverImage  String?
-  authorId    String    @db.ObjectId
+  authorId    String
   author      Admin     @relation(fields: [authorId], references: [id])
   category    String    @default("Engineering")
   tags        String[]
@@ -83,7 +83,7 @@ model BlogPost {
 }
 
 model PartnerApplication {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  id              String   @id @default(cuid())
   companyName     String
   contactName     String
   email           String
@@ -95,7 +95,7 @@ model PartnerApplication {
 }
 
 model Subscriber {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  id           String   @id @default(cuid())
   email        String   @unique
   name         String?
   source       String?
@@ -104,7 +104,7 @@ model Subscriber {
 }
 
 model CaseStudy {
-  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  id              String   @id @default(cuid())
   title           String
   clientName      String?
   serviceCategory String   // "Web Development", "App Development", etc.
@@ -121,7 +121,7 @@ model CaseStudy {
 }
 
 model EngagementPlan {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(cuid())
   name        String
   tagline     String
   description String

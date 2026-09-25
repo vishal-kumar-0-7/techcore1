@@ -16,4 +16,5 @@ RUN npx prisma@5 generate
 EXPOSE 3000
 
 # Use node directly — PM2 is handled by Docker restart policy
-CMD ["node", "server.js"]
+# Apply pending migrations, then start
+CMD ["sh", "-c", "npx prisma@5 migrate deploy && node server.js"]
