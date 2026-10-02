@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  client:
+    name: Client — lint & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+        env:
+          VITE_API_URL: /api
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: client-dist
+          path: client/dist
+          retention-days: 7
+
+  server:
+    name: Server — migrate & smoke test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: techcore
+          POSTGRES_PASSWORD: techcore
+          POSTGRES_DB: techcore_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U techcore"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # Dummy values only — the smoke test never sends email
+    env:
+      DATABASE_URL: postgresql://techcore:techcore@localhost:5432/techcore_test
+      JWT_SECRET: ci-test-secret
+      RESEND_API_KEY: re_ci_dummy_key
+      RECEIVER_EMAIL: ci@example.com
+      DISABLE_CRON: 'true'
+      PORT: 3000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - run: npm ci
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      # Fails if schema.prisma was changed without creating a migration
+      - name: Check schema matches migrations
+        run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
+
+      - name: Syntax check
+        run: find . -name '*.js' -not -path './node_modules/*' -not -path './generated/*' -print0 | xargs -0 -n1 node --check
+
+      - name: Smoke test API
+        run: |
+          node server.js > server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000/api/health > /dev/null && break
+            sleep 1
+          done
+
+          check() {
+            local expected=$1 method=$2 route=$3 body=$4
+            local code
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X "$method" \
+              -H 'Content-Type: application/json' ${body:+-d "$body"} \
+              "http://localhost:3000$route")
+            echo "$method $route -> $code (expected $expected)"
+            [ "$code" = "$expected" ]
+          }
+
+          check 200 GET  /api/health
+          check 200 GET  /api/blog
+          check 200 GET  /api/case-studies
+          check 200 GET  /api/engagement-plans
+          check 401 GET  /api/admin/me
+          check 401 GET  /api/leads
+          check 404 GET  /api/does-not-exist
+          check 400 POST /api/contact '{}'
+          check 400 POST /api/contact '{bad json'
+          check 400 POST /api/admin/login '{}'
+
+      - name: Server log
+        if: always()
+        run: cat server.log || true
