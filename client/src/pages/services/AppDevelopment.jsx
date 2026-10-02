@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LeadModal from '../../components/LeadModal';
 import SEO from '../../components/SEO';
+import { API } from '../../lib/api.js';
 import {
   Smartphone,
   Globe,
@@ -126,7 +127,7 @@ const AppDevelopment = () => {
   const [studiesLoading, setStudiesLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/case-studies?category=App Development`)
+    fetch(`${API}/case-studies?category=App Development`)
       .then(r => r.json())
       .then(data => { setCaseStudies(Array.isArray(data) ? data : []); setStudiesLoading(false); })
       .catch(() => setStudiesLoading(false));

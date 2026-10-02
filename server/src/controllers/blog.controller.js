@@ -1,7 +1,11 @@
 import prisma from '../lib/prisma.js';
 
+const VALID_STATUSES = ['draft', 'published'];
+
 function toSlug(title) {
-  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  // Titles with no latin characters would otherwise produce an empty slug
+  return slug || `post-${Date.now().toString(36)}`;
 }
 
 // Public
@@ -72,8 +76,15 @@ export async function updatePost(req, res) {
   const { title, content, excerpt, coverImage, category, tags, status } = req.body;
 
   try {
+    if (status && !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status.' });
+    }
+    const existing = await prisma.blogPost.findUnique({ where: { id }, select: { status: true } });
+    if (!existing) return res.status(404).json({ error: 'Post not found.' });
+
     const data = {};
-    if (title) { data.title = title; data.slug = toSlug(title); }
+    // Keep the slug stable once a post is live so shared links keep working
+    if (title) { data.title = title; if (existing.status !== 'published') data.slug = toSlug(title); }
     if (content) data.content = content;
     if (excerpt) data.excerpt = excerpt;
     if (coverImage !== undefined) data.coverImage = coverImage;
@@ -81,12 +92,14 @@ export async function updatePost(req, res) {
     if (tags) data.tags = tags;
     if (status) {
       data.status = status;
-      if (status === 'published') data.publishedAt = new Date();
+      // Only stamp publishedAt on the draft -> published transition
+      if (status === 'published' && existing.status !== 'published') data.publishedAt = new Date();
     }
 
     const post = await prisma.blogPost.update({ where: { id }, data });
     res.json(post);
   } catch (e) {
+    if (e.code === 'P2002') return res.status(409).json({ error: 'A post with this title already exists.' });
     res.status(500).json({ error: 'Failed to update post.' });
   }
 }

@@ -250,8 +250,8 @@ export default function AdminDashboard() {
     if (key === 'appointments') { setAppointments(json.data ?? []); setTotals(t => ({ ...t, appointments: json })); }
   };
 
-  const fetchAll = async () => {
-    const [a, c, l, ap, pa, b, pl, cs] = await Promise.all([
+  const loadAll = () =>
+    Promise.all([
       apiFetch(`${API}/analytics`).then(r => r.json()),
       apiFetch(`${API}/contact?page=1&limit=${LIMIT}`).then(r => r.json()),
       apiFetch(`${API}/leads?page=1&limit=${LIMIT}`).then(r => r.json()),
@@ -261,6 +261,8 @@ export default function AdminDashboard() {
       apiFetch(`${API}/engagement-plans/admin/all`).then(r => r.json()),
       apiFetch(`${API}/case-studies/admin/all`).then(r => r.json()),
     ]);
+
+  const applyAll = ([a, c, l, ap, pa, b, pl, cs]) => {
     setAnalytics(a);
     setContacts(c.data ?? (Array.isArray(c) ? c : []));
     setTotals(t => ({ ...t, contacts: c }));
@@ -274,15 +276,19 @@ export default function AdminDashboard() {
     setCaseStudies(Array.isArray(cs) ? cs : []);
   };
 
+  const fetchAll = () => loadAll().then(applyAll);
+
   useEffect(() => {
     apiFetch(`${API}/admin/me`).then(r => r.ok ? r.json() : null).then(u => { if (u) setUser(u); });
-    fetchAll();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    loadAll().then(applyAll);
+  }, []);
 
-  // Re-fetch paginated tabs when page changes
-  useEffect(() => { fetchPaginated('contact', 'contacts', pages.contacts); }, [pages.contacts]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchPaginated('leads', 'leads', pages.leads); }, [pages.leads]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchPaginated('appointments', 'appointments', pages.appointments); }, [pages.appointments]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Page changes fetch from the click handler rather than an effect, so the
+  // initial load in fetchAll isn't duplicated on mount
+  const changePage = (endpoint, key, page) => {
+    setPages(pg => ({ ...pg, [key]: page }));
+    fetchPaginated(endpoint, key, page);
+  };
 
   const updateStatus = async (endpoint, id, status) => {
     await apiFetch(`${API}/${endpoint}/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
@@ -399,7 +405,7 @@ export default function AdminDashboard() {
             <div>
               <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold">Contacts ({totals.contacts.total ?? contacts.length})</h1>
-                <PaginationBar meta={totals.contacts} onPage={p => setPages(pg => ({ ...pg, contacts: p }))} />
+                <PaginationBar meta={totals.contacts} onPage={p => changePage('contact', 'contacts', p)} />
               </div>
               <div className="space-y-4">
                 {contacts.map(c => (
@@ -431,7 +437,7 @@ export default function AdminDashboard() {
             <div>
               <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold">Leads ({totals.leads.total ?? leads.length})</h1>
-                <PaginationBar meta={totals.leads} onPage={p => setPages(pg => ({ ...pg, leads: p }))} />
+                <PaginationBar meta={totals.leads} onPage={p => changePage('leads', 'leads', p)} />
               </div>
               <div className="space-y-4">
                 {leads.map(l => (
@@ -468,7 +474,7 @@ export default function AdminDashboard() {
             <div>
               <div className="flex items-center justify-between mb-6">
                 <h1 className="text-2xl font-bold">Appointments ({totals.appointments.total ?? appointments.length})</h1>
-                <PaginationBar meta={totals.appointments} onPage={p => setPages(pg => ({ ...pg, appointments: p }))} />
+                <PaginationBar meta={totals.appointments} onPage={p => changePage('appointments', 'appointments', p)} />
               </div>
               <div className="space-y-4">
                 {appointments.map(a => (

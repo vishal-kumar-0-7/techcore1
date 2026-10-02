@@ -1,7 +1,5 @@
 import prisma from '../lib/prisma.js';
-import { Resend } from 'resend';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { sendEmail, esc, oneLine } from '../lib/email.js';
 
 export async function createPartnerApplication(req, res) {
   const { companyName, contactName, email, phone, partnershipType, message } = req.body;
@@ -16,31 +14,29 @@ export async function createPartnerApplication(req, res) {
     });
 
     // Acknowledgement to applicant
-    await resend.emails.send({
-      from: 'onboarding@resend.dev',
+    await sendEmail({
       to: email,
       subject: 'Partnership Application Received — TechCore',
       html: `
-        <h2>Hi ${contactName}, thanks for applying!</h2>
-        <p>We've received your <strong>${partnershipType} Partnership</strong> application for <strong>${companyName}</strong>.</p>
+        <h2>Hi ${esc(contactName)}, thanks for applying!</h2>
+        <p>We've received your <strong>${esc(partnershipType)} Partnership</strong> application for <strong>${esc(companyName)}</strong>.</p>
         <p>Our partnerships team will review your application and get back to you within 2 business days.</p>
         <p>— TechCore Partnerships Team</p>
       `,
     });
 
     // Internal notification
-    await resend.emails.send({
-      from: 'onboarding@resend.dev',
+    await sendEmail({
       to: process.env.RECEIVER_EMAIL,
-      subject: `New Partner Application: ${companyName}`,
+      subject: `New Partner Application: ${oneLine(companyName)}`,
       html: `
         <h2>New Partnership Application</h2>
-        <p><strong>Company:</strong> ${companyName}</p>
-        <p><strong>Contact:</strong> ${contactName}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Phone:</strong> ${phone || 'N/A'}</p>
-        <p><strong>Type:</strong> ${partnershipType}</p>
-        ${message ? `<p><strong>Message:</strong> ${message}</p>` : ''}
+        <p><strong>Company:</strong> ${esc(companyName)}</p>
+        <p><strong>Contact:</strong> ${esc(contactName)}</p>
+        <p><strong>Email:</strong> ${esc(email)}</p>
+        <p><strong>Phone:</strong> ${esc(phone || 'N/A')}</p>
+        <p><strong>Type:</strong> ${esc(partnershipType)}</p>
+        ${message ? `<p><strong>Message:</strong> ${esc(message)}</p>` : ''}
       `,
     });
 

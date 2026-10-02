@@ -1,34 +1,35 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import './App.css';
 import Navbar from './Navbar/Navbar';
 import { Routes, Route } from 'react-router-dom';
 import Home from './pages/services/Home';
-import WebDevelopment from './pages/services/WebDevelopment';
-import AppDevelopment from './pages/services/AppDevelopment';
-import SoftwareDevelopment from './pages/services/SoftwareDevelopment';
-import AIAutomation from './pages/services/AIAutomation';
-import CloudDevOps from './pages/services/CloudDevOps';
-import SecurityManagedIT from './pages/services/SecurityManagedIT';
-import BlockchainDevelopment from './pages/services/BlockchainDevelopment';
-import GrowthMarketing from './pages/services/GrowthMarketing';
-import DedicatedTeam from './pages/services/DedicatedTeam';
-import StartupSolution from './pages/solutions/Startup';
-import Enterprise from './pages/solutions/Enterprise';
-import WhiteLabel from './pages/solutions/WhiteLabel';
-import Contact from './pages/Contact';
-import AboutUs from './pages/Company/AboutUs';
-import Partnership from './pages/Company/Partnership';
-import HowWeWork from './pages/Company/HowWeWork';
-import WhyChooseUs from './pages/Company/WhyChooseUs';
-import Blog from './pages/resources/Blog';
-import BlogPost from './pages/resources/BlogPost';
-import Appointment from './pages/resources/Appointment';
-import AdminLogin from './pages/admin/AdminLogin';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import BlogEditor from './pages/admin/BlogEditor';
 import AdminGuard from './components/AdminGuard';
-import NotFound from './pages/NotFound';
-import Work from './pages/Work';
+
+const WebDevelopment = lazy(() => import('./pages/services/WebDevelopment'));
+const AppDevelopment = lazy(() => import('./pages/services/AppDevelopment'));
+const SoftwareDevelopment = lazy(() => import('./pages/services/SoftwareDevelopment'));
+const AIAutomation = lazy(() => import('./pages/services/AIAutomation'));
+const CloudDevOps = lazy(() => import('./pages/services/CloudDevOps'));
+const SecurityManagedIT = lazy(() => import('./pages/services/SecurityManagedIT'));
+const BlockchainDevelopment = lazy(() => import('./pages/services/BlockchainDevelopment'));
+const GrowthMarketing = lazy(() => import('./pages/services/GrowthMarketing'));
+const DedicatedTeam = lazy(() => import('./pages/services/DedicatedTeam'));
+const StartupSolution = lazy(() => import('./pages/solutions/Startup'));
+const Enterprise = lazy(() => import('./pages/solutions/Enterprise'));
+const WhiteLabel = lazy(() => import('./pages/solutions/WhiteLabel'));
+const Contact = lazy(() => import('./pages/Contact'));
+const AboutUs = lazy(() => import('./pages/Company/AboutUs'));
+const Partnership = lazy(() => import('./pages/Company/Partnership'));
+const HowWeWork = lazy(() => import('./pages/Company/HowWeWork'));
+const WhyChooseUs = lazy(() => import('./pages/Company/WhyChooseUs'));
+const Blog = lazy(() => import('./pages/resources/Blog'));
+const BlogPost = lazy(() => import('./pages/resources/BlogPost'));
+const Appointment = lazy(() => import('./pages/resources/Appointment'));
+const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const BlogEditor = lazy(() => import('./pages/admin/BlogEditor'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+const Work = lazy(() => import('./pages/Work'));
 
 function AdminLayout({ children }) {
   return <>{children}</>;
@@ -37,6 +38,8 @@ function AdminLayout({ children }) {
 function App() {
   return (
     <div>
+      {/* Pages are code-split; Home stays in the main bundle for a fast first paint */}
+      <Suspense fallback={<div className="min-h-screen" />}>
       <Routes>
         {/* Admin routes — no Navbar */}
         <Route path="/admin" element={<AdminLayout><AdminLogin /></AdminLayout>} />
@@ -76,6 +79,7 @@ function App() {
           </>
         } />
       </Routes>
+      </Suspense>
     </div>
   );
 }

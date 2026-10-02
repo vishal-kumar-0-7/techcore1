@@ -64,10 +64,14 @@ export async function createCaseStudy(req, res) {
   }
 }
 
+const CASE_STUDY_FIELDS = ['title', 'clientName', 'serviceCategory', 'problem', 'solution', 'result', 'techStack', 'coverImage', 'gradientColor', 'published', 'featured', 'order'];
+
 export async function updateCaseStudy(req, res) {
   const { id } = req.params;
+  // Only let known columns through to Prisma
+  const data = Object.fromEntries(CASE_STUDY_FIELDS.filter(k => req.body[k] !== undefined).map(k => [k, req.body[k]]));
   try {
-    const study = await prisma.caseStudy.update({ where: { id }, data: req.body });
+    const study = await prisma.caseStudy.update({ where: { id }, data });
     res.json(study);
   } catch (e) {
     res.status(500).json({ error: 'Failed to update case study.' });

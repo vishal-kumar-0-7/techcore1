@@ -1,7 +1,5 @@
 import prisma from '../lib/prisma.js';
-import { Resend } from 'resend';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { sendEmail, esc, oneLine } from '../lib/email.js';
 
 export async function createContact(req, res) {
   const { name, email, description } = req.body;
@@ -16,17 +14,16 @@ export async function createContact(req, res) {
       data: { name, email, description },
     });
 
-    // 2. Send email notification
-    await resend.emails.send({
-      from: 'onboarding@resend.dev',
+    // 2. Send email notification (failure is logged, never fails the request)
+    await sendEmail({
       to: process.env.RECEIVER_EMAIL,
-      subject: `New Contact Form Submission from ${name}`,
+      subject: `New Contact Form Submission from ${oneLine(name)}`,
       html: `
         <h2>New Contact Request</h2>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Name:</strong> ${esc(name)}</p>
+        <p><strong>Email:</strong> ${esc(email)}</p>
         <p><strong>Message:</strong></p>
-        <p>${description}</p>
+        <p>${esc(description)}</p>
       `,
     });
 

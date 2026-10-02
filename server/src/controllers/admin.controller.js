@@ -30,7 +30,7 @@ export async function login(req, res) {
     const token = jwt.sign(
       { id: admin.id, email: admin.email, role: admin.role },
       process.env.JWT_SECRET,
-      { expiresIn: '30d' }
+      { expiresIn: '7d' }
     );
 
     // Set HttpOnly cookie — browser sends it automatically, JS can't read it
@@ -38,7 +38,7 @@ export async function login(req, res) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
     res.json({
@@ -64,28 +64,6 @@ export async function getMe(req, res) {
 }
 
 export async function logout(req, res) {
-  res.clearCookie('admin_token', { httpOnly: true, sameSite: 'lax' });
+  res.clearCookie('admin_token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' });
   res.json({ message: 'Logged out.' });
-}
-
-// Utility: run this once to seed your first admin account
-// POST /api/admin/seed  (remove this route after first use)
-export async function seedAdmin(req, res) {
-  const { name, email, password } = req.body;
-
-  try {
-    const existing = await prisma.admin.findUnique({ where: { email } });
-    if (existing) {
-      return res.status(409).json({ error: 'Admin already exists.' });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 12);
-    const admin = await prisma.admin.create({
-      data: { name, email, passwordHash, role: 'super_admin' },
-    });
-
-    res.status(201).json({ message: 'Admin created.', id: admin.id });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to create admin.' });
-  }
 }

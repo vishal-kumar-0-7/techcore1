@@ -1,18 +1,16 @@
 import cron from 'node-cron';
 import prisma from '../lib/prisma.js';
-import { Resend } from 'resend';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { sendEmailOrThrow, esc, oneLine } from '../lib/email.js';
 
 async function sendFollowUpEmail(lead) {
-  await resend.emails.send({
-    from: 'onboarding@resend.dev',
+  const firstName = lead.name.split(' ')[0];
+  await sendEmailOrThrow({
     to: lead.email,
-    subject: `Still thinking it over, ${lead.name.split(' ')[0]}?`,
+    subject: `Still thinking it over, ${oneLine(firstName)}?`,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Hey ${lead.name.split(' ')[0]},</h2>
-        <p>Just checking in — we noticed you reached out about <strong>${lead.serviceInterest || 'our services'}</strong> a few days ago.</p>
+        <h2>Hey ${esc(firstName)},</h2>
+        <p>Just checking in — we noticed you reached out about <strong>${esc(lead.serviceInterest || 'our services')}</strong> a few days ago.</p>
         <p>If you have any questions or want to explore what we can build together, I'd love to jump on a quick 30-minute call.</p>
         <p>
           <a href="https://techcore.dev/resources/appointment"

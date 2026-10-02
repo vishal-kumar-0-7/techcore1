@@ -41,22 +41,29 @@ const defaultPlans = [
 
 export async function getEngagementPlans(req, res) {
   try {
-    let plans = await prisma.engagementPlan.findMany({
+    // Seed defaults only when the table is truly empty — not when every plan
+    // has been deactivated, or the defaults would be re-inserted as duplicates
+    if (await prisma.engagementPlan.count() === 0) {
+      await prisma.engagementPlan.createMany({ data: defaultPlans });
+    }
+
+    const plans = await prisma.engagementPlan.findMany({
       where: { active: true },
       orderBy: { order: 'asc' },
     });
-
-    // Seed defaults if DB is empty
-    if (plans.length === 0) {
-      await prisma.engagementPlan.createMany({ data: defaultPlans });
-      plans = await prisma.engagementPlan.findMany({ where: { active: true }, orderBy: { order: 'asc' } });
-    }
 
     res.json(plans);
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Failed to fetch plans.' });
   }
+}
+
+const PLAN_FIELDS = ['name', 'tagline', 'description', 'badge', 'features', 'notIncluded', 'ctaLabel', 'popular', 'order', 'active'];
+
+// Only let known columns through to Prisma
+function pickPlanFields(body = {}) {
+  return Object.fromEntries(PLAN_FIELDS.filter(k => body[k] !== undefined).map(k => [k, body[k]]));
 }
 
 export async function getAllPlans(req, res) {
@@ -69,8 +76,12 @@ export async function getAllPlans(req, res) {
 }
 
 export async function createPlan(req, res) {
+  const { name, tagline, description } = req.body;
+  if (!name || !tagline || !description) {
+    return res.status(400).json({ error: 'name, tagline and description are required.' });
+  }
   try {
-    const plan = await prisma.engagementPlan.create({ data: req.body });
+    const plan = await prisma.engagementPlan.create({ data: pickPlanFields(req.body) });
     res.status(201).json(plan);
   } catch (e) {
     res.status(500).json({ error: 'Failed to create plan.' });
@@ -79,7 +90,7 @@ export async function createPlan(req, res) {
 
 export async function updatePlan(req, res) {
   try {
-    const plan = await prisma.engagementPlan.update({ where: { id: req.params.id }, data: req.body });
+    const plan = await prisma.engagementPlan.update({ where: { id: req.params.id }, data: pickPlanFields(req.body) });
     res.json(plan);
   } catch (e) {
     res.status(500).json({ error: 'Failed to update plan.' });
